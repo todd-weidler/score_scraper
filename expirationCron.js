@@ -41,7 +41,7 @@ function startCron(){
   const db = admin.firestore();
 
 
-  cron.schedule("0,15,30,45 12-22 * * *", () => {
+  cron.schedule("0,15,30,45 12-22 * * *", async () => {
   
     let doesAffectDrafts = false;
     let doesAffectInvitations = false;
