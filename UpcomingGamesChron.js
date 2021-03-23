@@ -4,7 +4,7 @@ admin.initializeApp()
 const cron = require("node-cron");
 const db = admin.firestore();
 
-console.log("here at least"); 
+console.log("Waiting only minute for debugging"); 
 
 async function getUpcomingGames() { // returns an array that contains each upcoming game as an object.
 	
