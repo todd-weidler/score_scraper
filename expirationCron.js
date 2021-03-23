@@ -6,7 +6,7 @@ function getAdjustedDate(date){
   var adjustedDate = new Date(date);
   var wasChanged = false;
 
-  var mins = curDate.getUTCMinutes();
+  var mins = date.getUTCMinutes();
 
   if(mins % 15 != 0){
   
@@ -40,8 +40,8 @@ function startCron(){
 
   const db = admin.firestore();
 
-
-  cron.schedule("0,15,30,45 12-22 * * *", async () => {
+// 0,4,15,30,45
+  cron.schedule("* 12-22 * * *", async () => {
   
     let doesAffectDrafts = false;
     let doesAffectInvitations = false;
@@ -54,6 +54,7 @@ function startCron(){
   
     if(wasChanged){
       console.log("Something is wrong with cron job, it is not being executed the 0, 15, 30, and 45 minute mark of the hour");
+      return;
     }
   
     const expirationDocId = customUTCDateStr(adjustedDate);
@@ -116,4 +117,101 @@ function startCron(){
 
 }
 
+
+admin.initializeApp();
+
+const db = admin.firestore();
+
+
+function test(){
+
+  
+
+  cron.schedule("0,15,30,35,45 12-22 * * *", () => {
+
+    console.log("here");
+
+    expirationJob();
+
+  });
+
+}
+
+
+async function expirationJob() {
+
+  let doesAffectDrafts = false;
+  let doesAffectInvitations = false;
+
+  const curDate = new Date();
+  const {adjustedDate, wasChanged} = getAdjustedDate(curDate);
+
+  console.log("------------------------------");
+
+
+  if(wasChanged){
+    console.log("Something is wrong with cron job, it is not being executed the 0, 15, 30, and 45 minute mark of the hour");
+    // return;
+  }
+
+  const expirationDocId = customUTCDateStr(adjustedDate);
+  const draftExpirationDocRef = db.collection('draft_expirations_subscriptions').doc(expirationDocId);
+  const draftExpirationDoc = await draftExpirationDocRef.get();
+
+  if(!draftExpirationDoc.exists){
+    console.log("No draft expiration document")
+  }
+  else{
+
+    const { draftIds } = draftExpirationDoc.data();
+
+    if(draftIds != null && draftIds.length > 0){
+
+      doesAffectDrafts = true;
+    }
+  }
+
+  const invitationExpirationDocRef = db.collection('invitation_expirations_subscriptions').doc(expirationDocId);
+  const invitationExpirationDoc = await invitationExpirationDocRef.get();
+
+  if(!invitationExpirationDoc.exists){
+    console.log("No invitation expiration document")
+  }
+  else{
+    
+    const { invitationIds } = invitationExpirationDoc.data();
+
+    if(invitationIds != null && invitationsIds.length > 0){
+      doesAffectInvitations = true;
+    }
+  }
+
+  if(doesAffectDrafts || doesAffectInvitations){
+
+    const expireJobsDocRef = db.collection("expire_jobs").doc("current");
+
+   const res = await expireJobsDocRef.update({
+      "doesAffectDrafts": doesAffectDrafts, 
+      "doesAffectInvitations": doesAffectInvitations, 
+      "expirationLookupStr": expirationDocId
+    });
+    console.log("just updated the doc in expire_jobs collection...");
+  }
+
+  console.log("Expiration Doc Id: " + expirationDocId);
+  console.log("doesAffectDrafts:" + doesAffectDrafts);
+  console.log("doesAffectInvitations:" + doesAffectInvitations);
+  //
+  // console.log(customUTCDateStr(curDate));
+  // console.log(customUTCDateStr(adjustedDate));
+
+
+  console.log("------------------------------");
+
+
+}
+
+
+
 // startCron();
+test();
