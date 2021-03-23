@@ -17,6 +17,8 @@
   },
   "homepage": "https://github.com/todd-weidler/score_scraper#readme",
   "dependencies": {
+    "firebase-admin": "^9.5.0",
+    "node-cron": "^3.0.0",
     "puppeteer": "^7.1.0"
   }
 }
