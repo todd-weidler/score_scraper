@@ -1,6 +1,15 @@
 const admin = require("firebase-admin");
 const cron = require("node-cron");
 
+const serviceAccount = require('./ServiceAccountKey.json');
+
+admin.initializeApp({
+  credential: admin.credential.cert(serviceAccount)
+});
+
+const db = admin.firestore();
+
+
 function getAdjustedDate(date){
 
   let adjustedDate = new Date(date);
@@ -35,13 +44,7 @@ function customUTCDateStr(date){
 
 
 
-const serviceAccount = require('./ServiceAccountKey.json');
 
-admin.initializeApp({
-  credential: admin.credential.cert(serviceAccount)
-});
-
-const db = admin.firestore();
 
 
 function startCron(){
