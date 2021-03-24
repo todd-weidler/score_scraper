@@ -74,7 +74,7 @@ async function expirationJob() {
   }
 
   const expirationDocId = customUTCDateStr(adjustedDate);
-  const draftExpirationDocRef = db.collection('draft_expirations_subscriptions').doc(expirationDocId);
+  const draftExpirationDocRef = db.collection('draft_expiration_subscriptions').doc(expirationDocId);
   const draftExpirationDoc = await draftExpirationDocRef.get();
 
   if(!draftExpirationDoc.exists){
@@ -90,7 +90,7 @@ async function expirationJob() {
     }
   }
 
-  const invitationExpirationDocRef = db.collection('invitation_expirations_subscriptions').doc(expirationDocId);
+  const invitationExpirationDocRef = db.collection('invitation_expiration_subscriptions').doc(expirationDocId);
   const invitationExpirationDoc = await invitationExpirationDocRef.get();
 
   if(!invitationExpirationDoc.exists){
@@ -120,16 +120,11 @@ async function expirationJob() {
   console.log("Expiration Doc Id: " + expirationDocId);
   console.log("doesAffectDrafts:" + doesAffectDrafts);
   console.log("doesAffectInvitations:" + doesAffectInvitations);
-  //
-  // console.log(customUTCDateStr(curDate));
-  // console.log(customUTCDateStr(adjustedDate));
-
 
   console.log("------------------------------");
 
 
 }
-
 
 
 startCron();
