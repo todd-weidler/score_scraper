@@ -1,14 +1,20 @@
 const admin = require("firebase-admin");
 const cron = require("node-cron");
-
+const customUTCDateStr = require("./utils/customUTCDateStr");
 const serviceAccount = require('./ServiceAccountKey.json');
 
-admin.initializeApp({
-  credential: admin.credential.cert(serviceAccount)
-});
+if(isTesting){
+  admin.initializeApp({
+    projectId: "brokebets-3efe4"
+  });
+}
+else{
+  admin.initializeApp({
+    credential: admin.credential.cert(serviceAccount)
+  });
+}
 
 const db = admin.firestore();
-
 
 function getAdjustedDate(date){
 
@@ -35,16 +41,6 @@ function getAdjustedDate(date){
   return { "wasChanged": wasChanged, "adjustedDate": new Date(adjustedDate) };
 
 }
-
-
-function customUTCDateStr(date){
-
-  return date.toISOString().replace(/T/, '-').replace(/\..+/, '') .slice(0, -3);
-}
-
-
-
-
 
 
 function startCron(){

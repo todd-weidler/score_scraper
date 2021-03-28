@@ -7,9 +7,21 @@ const puppeteer = require("puppeteer");
 
 const serviceAccount = require('./ServiceAccountKey.json');
 
-admin.initializeApp({
-  credential: admin.credential.cert(serviceAccount)
-});
+const isTesting = false;
+
+if(isTesting){
+
+  admin.initializeApp({
+    projectId: "brokebets-3efe4"
+  });
+}
+else{
+  admin.initializeApp({
+    credential: admin.credential.cert(serviceAccount)
+  });
+}
+
+
 
 const db = admin.firestore();
 
@@ -17,6 +29,8 @@ console.log("Waiting only a minute for debugging");
 
 async function scrapeUpcomingGames() { // returns an array that contains each upcoming game as an object.
 	
+  console.log("About to scrape");
+
   const url = "https://www.espn.com/nba/scoreboard/_/date/"
 	const currentTime = new Date();
 	const dd = String(currentTime.getDate()).padStart(2,'0');
@@ -29,11 +43,12 @@ async function scrapeUpcomingGames() { // returns an array that contains each up
 
 		await page.goto(url + yyyy + mm + dd);
   
+  
+
   	// For debugging
 		page.on('console', msg => {
-			for (let i = 0; i < msg.args().length; ++i)
-				console.log(`${i}: ${msg.args()[i]}`);
-			}
+      console.log(msg.text());
+    }
 		);
      
   
@@ -182,10 +197,6 @@ function customUTCDateStr(date){
 	return date.toISOString().replace(/T/, '-').replace(/\..+/, '') .slice(0, -3);
 }
 
-//// To be called in upcoming games chron.
-//// Need to edit schedule time. Currenly set to once per minute for debugging purposes.
-
-	
 	
 async function writeDataToFirestore(games, draftExpirationDocIds, invitationExpirationDocIds){	
     
@@ -241,7 +252,8 @@ async function writeDataToFirestore(games, draftExpirationDocIds, invitationExpi
 
 function startCron(){
 
-  cron.schedule("0 1 * * *", async function (){
+  // 0 1 * * *
+  cron.schedule("16 19 * * *", async function (){
 
     const upcomingGames = await scrapeUpcomingGames();
 
@@ -269,7 +281,7 @@ function startCron(){
 
 
 		// commented out so we don't write to db when testing
-		// await writeDataToFirestore(upcomingGames, draftExpirationDocIds, invitationExpirationDocIds);
+		await writeDataToFirestore(upcomingGames, draftExpirationDocIds, invitationExpirationDocIds);
 
   });
 }
