@@ -4,7 +4,7 @@ const cron = require("node-cron");
 // const customUTCDateStr = require("./utils/customUTCDateStr");
 const serviceAccount = require('./ServiceAccountKey.json');
 
-const isTesting = true;
+const isTesting = false;
 
 if(isTesting){
 
@@ -58,7 +58,6 @@ async function getEarliestStartTime(){
   
   let mins = gameStartDateTime.getUTCMinutes();
 
-  // 15
   gameStartDateTime.setUTCMinutes(mins - 15);
 
   const numMilliseconds = Math.max(gameStartDateTime.getTime() - new Date().getTime(), 0);
@@ -80,7 +79,8 @@ async function updateCurrentScraperJobDoc(){
   const scraperJobDocRef = db.collection("scraper_jobs").doc("current");
 
   const res = await scraperJobDocRef.update({
-    "timestamp": firestore.FieldValue.serverTimestamp()
+    "timestamp": firestore.FieldValue.serverTimestamp(),
+    "jobType": "start"
   });
 }
 

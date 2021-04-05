@@ -22,6 +22,27 @@ async function start(){
 
   const dbListenerHandle = scraperJobDocRef.onSnapshot(async (docSnapshot) => {
 
+    if(docSnapshot.exists){
+      console.log(`Error: the document "current" was not found in the "scraper_jobs" collection`);
+      return;
+    }
+
+    console.log("Document read from scraper_jobs/current");
+
+    const {jobType} = docSnapshot.data();
+
+    if(jobType == null){
+      console.log("Error: the jobType field is null");
+      return;
+    }
+
+
+    if(jobType == "init"){
+      console.log("Scraper script has been initialized...will do nothing until it gets a command to start scraping");
+      return;
+    }
+
+
     console.log("Scraper job was updated in database");
 
     if(browser == null){
