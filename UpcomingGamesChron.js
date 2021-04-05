@@ -25,8 +25,6 @@ else{
 
 const db = admin.firestore();
 
-console.log("Waiting only a minute for debugging"); 
-
 async function scrapeUpcomingGames() { // returns an array that contains each upcoming game as an object.
 	
   console.log("About to scrape");
@@ -76,8 +74,10 @@ async function scrapeUpcomingGames() { // returns an array that contains each up
       const betLinesDivs = gameContainer.querySelectorAll('section.sb-detail > div.stat > div');
 
       if(betLinesDivs.length != 2){
-        console.log("Error in scraper: There was not exactly two divs found when querying for the divs that store the betting lines data. Instead it found "+betLinesDivs.length);
-        return [];
+
+        continue;
+        // console.log("Error in scraper: There was not exactly two divs found when querying for the divs that store the betting lines data. Instead it found "+betLinesDivs.length);
+        // return [];
       }
 			  
 
@@ -120,55 +120,72 @@ async function scrapeUpcomingGames() { // returns an array that contains each up
       let overBetStr = "o " + ouBetStr;
       let underBetStr = "u " + ouBetStr;
 
-
       let isHomeTeamFavorite = false;
-
-      const spreadFavTeamAbrev = spreadBetStr.split("-")[0].trim();
-
+      let doesSpreadBetExist = true;
+  
       let spreadFavoriteBetStr = "";
       let spreadUnderdogBetStr = "";
 
-      // finds out if the home team is the favorite for the spread bet
-      if(spreadFavTeamAbrev == homeAbbrev){
+      // if there is a spread bet for the game
+      if(spreadBetStr.includes("-")){
 
-        isHomeTeamFavorite = true;
+        doesSpreadBetExist = true;
 
-        let spreadAmtStr = spreadBetStr.split("-")[1].trim();
-        let spreadAmtFloat = parseFloat(spreadAmtStr);
-        let spreadAmtInt = Math.floor(spreadAmtFloat)
+        const spreadFavTeamAbrev = spreadBetStr.split("-")[0].trim();
 
-        // if the spread amount isnt a whole number
-        if(spreadAmtFloat > spreadAmtInt){
-          spreadUnderdogBetStr = awayAbbrev + " +" + spreadAmtFloat.toFixed(1);
-          spreadFavoriteBetStr = homeAbbrev + " -" + spreadAmtFloat.toFixed(1);
+        // finds out if the home team is the favorite for the spread bet
+        if(spreadFavTeamAbrev == homeAbbrev){
+
+          isHomeTeamFavorite = true;
+
+          let spreadAmtStr = spreadBetStr.split("-")[1].trim();
+          let spreadAmtFloat = parseFloat(spreadAmtStr);
+          let spreadAmtInt = Math.floor(spreadAmtFloat)
+
+          // if the spread amount isnt a whole number
+          if(spreadAmtFloat > spreadAmtInt){
+            spreadUnderdogBetStr = awayAbbrev + " +" + spreadAmtFloat.toFixed(1);
+            spreadFavoriteBetStr = homeAbbrev + " -" + spreadAmtFloat.toFixed(1);
+          }
+          else{
+            spreadUnderdogBetStr = awayAbbrev + " +" + spreadAmtInt;
+            spreadFavoriteBetStr = homeAbbrev + " -" + spreadAmtInt;
+          }
+        }
+        else if(spreadFavTeamAbrev == awayAbbrev){
+
+          isHomeTeamFavorite = false;
+
+          let spreadAmtStr = spreadBetStr.split("-")[1].trim();
+          let spreadAmtFloat = parseFloat(spreadAmtStr);
+          let spreadAmtInt = Math.floor(spreadAmtFloat)
+
+          // if the spread amount isnt a whole number
+          if(spreadAmtFloat > spreadAmtInt){
+            spreadUnderdogBetStr = homeAbbrev + " +" + spreadAmtFloat.toFixed(1);
+            spreadFavoriteBetStr = awayAbbrev + " -" + spreadAmtFloat.toFixed(1);
+          }
+          else{
+            spreadUnderdogBetStr = homeAbbrev + " +" + spreadAmtInt;
+            spreadFavoriteBetStr = awayAbbrev + " -" + spreadAmtInt;
+          }
         }
         else{
-          spreadUnderdogBetStr = awayAbbrev + " +" + spreadAmtInt;
-          spreadFavoriteBetStr = homeAbbrev + " -" + spreadAmtInt;
+          console.log("Error in scraper: The favorite for the spread bet does not equal either team: Spread team abbrev: " + spreadFavTeamAbrev);
+          return [];
         }
       }
-      else if(spreadFavTeamAbrev == awayAbbrev){
-
-        isHomeTeamFavorite = false;
-
-        let spreadAmtStr = spreadBetStr.split("-")[1].trim();
-        let spreadAmtFloat = parseFloat(spreadAmtStr);
-        let spreadAmtInt = Math.floor(spreadAmtFloat)
-
-        // if the spread amount isnt a whole number
-        if(spreadAmtFloat > spreadAmtInt){
-          spreadUnderdogBetStr = homeAbbrev + " +" + spreadAmtFloat.toFixed(1);
-          spreadFavoriteBetStr = awayAbbrev + " -" + spreadAmtFloat.toFixed(1);
-        }
-        else{
-          spreadUnderdogBetStr = homeAbbrev + " +" + spreadAmtInt;
-          spreadFavoriteBetStr = awayAbbrev + " -" + spreadAmtInt;
-        }
+      // if there isnt a spread bet for the game
+      else if(spreadBetStr.toLowerCase() == "even"){
+        spreadFavoriteBetStr = "EVEN"
+        spreadUnderdogBetStr = "EVEN"
+        doesSpreadBetExist = false;
       }
       else{
-        console.log("Error in scraper: The favorite for the spread bet does not equal either team: Spread team abbrev: " + spreadFavTeamAbrev);
+        console.log("Error in scraper: The spreadBetStr is not valid. The spreadBet was: "+spreadBetStr);
         return [];
       }
+
 
       upcomingGames.push({
               "homeTeam": homeFullName, 
@@ -176,6 +193,7 @@ async function scrapeUpcomingGames() { // returns an array that contains each up
               "isHomeTeamFavorite": isHomeTeamFavorite, 
               "spreadFavoriteBetStr": spreadFavoriteBetStr, 
               "spreadUnderdogBetStr": spreadUnderdogBetStr,
+              "doesSpreadBetExist": doesSpreadBetExist,
               "overBetStr": overBetStr,
               "underBetStr": underBetStr,
               "gameStartUTCStr": startDateTimeUTCStr
@@ -200,10 +218,13 @@ function customUTCDateStr(date){
 	
 async function writeDataToFirestore(games, draftExpirationDocIds, invitationExpirationDocIds){	
     
+   console.log("here");
+
 	const batch = db.batch();
 	const draftExpSubsRef = db.collection("draft_expiration_subscriptions");
 	const invitationExpSubsRef = db.collection("invitation_expiration_subscriptions");
 	const gamesRef = db.collection("games");
+  const associatedContestsRef = db.collection("associated_contests");
 	
 	// creates all the documents for the draft expiration time slots
 	draftExpirationDocIds.forEach((docId) => {
@@ -220,16 +241,19 @@ async function writeDataToFirestore(games, draftExpirationDocIds, invitationExpi
 			"invitationIds": []
 		});
 	});
-	
+
+
 
 	// adds all the upcoming games to the games collection
 	games.forEach((game) => {
 
 		let newGameDocRef = gamesRef.doc();
-		let newDocId = newGameDocRef.id;
+		let newGameDocId = newGameDocRef.id;
+    let associatedContestsDocRef = associatedContestsRef.doc(newGameDocId);
+
 
 		batch.set(newGameDocRef, {
-			"gameId": newDocId,
+			"gameId": newGameDocId,
 			"homeTeam": game.homeTeam,
 			"awayTeam": game.awayTeam,
 			"gameStatus": "upcoming",
@@ -238,13 +262,27 @@ async function writeDataToFirestore(games, draftExpirationDocIds, invitationExpi
 			"isHomeTeamFavorite": game.isHomeTeamFavorite,
 			"spreadFavoriteBetStr": game.spreadFavoriteBetStr,
 			"spreadUnderdogBetStr": game.spreadUnderdogBetStr,
+      "doesSpreadBetExist": game.doesSpreadBetExist,
 			"overBetStr": game.overBetStr,
 			"underBetStr": game.underBetStr,
 		});
+
+
+    batch.set(associatedContestsDocRef, {
+			"contestIds": [],
+		});
+
 	});
 
-	await batch.commit();
 
+  try {
+    await batch.commit();
+  }
+  catch (err){
+    console.log(err);
+  }
+  
+	
 	console.log("finished writing to firestore");
 }
 
@@ -252,8 +290,10 @@ async function writeDataToFirestore(games, draftExpirationDocIds, invitationExpi
 
 function startCron(){
 
+  console.log("Starting upcomingGamesCron");
+
   // 0 1 * * *
-  cron.schedule("16 19 * * *", async function (){
+  cron.schedule("30 12 * * *", async function (){
 
     const upcomingGames = await scrapeUpcomingGames();
 
@@ -274,14 +314,13 @@ function startCron(){
 		});
 
 		
-		console.log("Draft Expiration doc ids:");
+		// commented out so we don't write to db when testing
+		await writeDataToFirestore(upcomingGames, draftExpirationDocIds, invitationExpirationDocIds);
+
+    console.log("Draft Expiration doc ids:");
 		console.log(draftExpirationDocIds);
 		console.log("Invitation Expiration doc ids:");
 		console.log(invitationExpirationDocIds);
-
-
-		// commented out so we don't write to db when testing
-		await writeDataToFirestore(upcomingGames, draftExpirationDocIds, invitationExpirationDocIds);
 
   });
 }
@@ -289,5 +328,3 @@ function startCron(){
 
 
 startCron();
-
-

@@ -2,7 +2,7 @@
 const admin = require("firebase-admin");
 const serviceAccount = require('./ServiceAccountKey.json');
 
-const isTesting = true;
+const isTesting = false;
 
 if(isTesting){
   admin.initializeApp({

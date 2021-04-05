@@ -40,6 +40,7 @@ module.exports = async function getInitialGameStates(){
       "isOverTime": false,
       "isEndOfFirst": false,
       "isEndOfThird": false,
+      "isEndOfFourth": false,
       "isHalftime": false,
       "isEndOfOverTime": false,
       "numOverTime": 0,

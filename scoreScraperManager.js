@@ -73,7 +73,6 @@ async function getEarliestStartTime(){
     console.log("finished");
 
   }, numMilliseconds);
-
 }
 
 async function updateCurrentScraperJobDoc(){

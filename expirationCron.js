@@ -3,6 +3,8 @@ const cron = require("node-cron");
 const customUTCDateStr = require("./utils/customUTCDateStr");
 const serviceAccount = require('./ServiceAccountKey.json');
 
+const isTesting = false;
+
 if(isTesting){
   admin.initializeApp({
     projectId: "brokebets-3efe4"
@@ -77,7 +79,7 @@ async function expirationJob() {
   const draftExpirationDoc = await draftExpirationDocRef.get();
 
   if(!draftExpirationDoc.exists){
-    console.log("No draft expiration document")
+    console.log("No draft expiration document");
   }
   else{
 
@@ -99,14 +101,46 @@ async function expirationJob() {
     
     const { invitationIds } = invitationExpirationDoc.data();
 
-    if(invitationIds != null && invitationsIds.length > 0){
+    if(invitationIds != null && invitationIds.length > 0){
       doesAffectInvitations = true;
     }
   }
 
+
+  // also update the games that are not longer able to be bet on
+  const gamesRef = db.collection("games");
+
+  const timePlusThirtyMins = new Date(Math.max(curDate.getTime(), adjustedDate.getTime()));
+  timePlusThirtyMins.setUTCMinutes(timePlusThirtyMins.getUTCMinutes() + 30);
+
+  const snapshot = await gamesRef
+                .where("isAvailableForContestInvitation", "==", true)
+                .where("gameStartDateTime", "<=", admin.firestore.Timestamp.fromDate(timePlusThirtyMins))
+                .get()
+
+ 
+
+  if(!snapshot.empty){
+
+    console.log("Updating isAvailableForContestInvitation field for games...");
+
+    let docs = snapshot.docs;
+
+    try{
+      await Promise.all(docs.map(doc => gamesRef.doc(doc.id).update({
+        "isAvailableForContestInvitation": false
+      })));
+    }
+    catch (err){
+      console.log(err);
+      return;
+    }
+  }
+  
+  
   if(doesAffectDrafts || doesAffectInvitations){
 
-    const expireJobsDocRef = db.collection("expire_jobs").doc("current");
+   const expireJobsDocRef = db.collection("expire_jobs").doc("current");
 
    const res = await expireJobsDocRef.update({
       "doesAffectDrafts": doesAffectDrafts, 
