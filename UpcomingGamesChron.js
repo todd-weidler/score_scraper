@@ -45,8 +45,8 @@ async function scrapeUpcomingGames() { // returns an array that contains each up
 
   	// For debugging
 		page.on('console', msg => {
-      console.log(msg.text());
-    }
+        console.log(msg.text());
+      }
 		);
      
   
@@ -293,7 +293,7 @@ function startCron(){
   console.log("Starting upcomingGamesCron");
 
   // 0 1 * * *
-  cron.schedule("30 12 * * *", async function (){
+  cron.schedule("* 13 * * *", async function (){
 
     const upcomingGames = await scrapeUpcomingGames();
 

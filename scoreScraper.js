@@ -3,7 +3,7 @@ const puppeteer = require('puppeteer');
 const { db } = require('./db');
 const getInitialGameStates = require("./getInitialGameStates");
 const getNumMillisecondsUntilNextThreeAM = require("./utils/getNumMillisecondsUntilNextThreeAM");
-
+const sendEmail = require("./utils/sendEmail");
 
 async function start(){
 
@@ -41,7 +41,6 @@ async function start(){
       console.log("Scraper script has been initialized...will do nothing until it gets a command to start scraping");
       return;
     }
-
 
     console.log("Scraper job was updated in database");
 
@@ -124,6 +123,7 @@ async function start(){
     await page.exposeFunction('findGameUpdates', findGameUpdates);
     await page.exposeFunction('updateCache', updateCache);
     await page.exposeFunction('applyUpdates', applyUpdates);
+    await page.exposeFunction('closeBrowserIfAllGamesHaveCompleted', closeBrowserIfAllGamesHaveCompleted);
     
    
     try{
@@ -153,6 +153,7 @@ async function start(){
             findGameUpdates();
             updateCache();
             await applyUpdates();
+            await closeBrowserIfAllGamesHaveCompleted();
 
         });
 
@@ -276,7 +277,7 @@ async function start(){
     
             if(numOverTimeStr == null){
               console.log("error getting the number of overtimes the game is in");
-              return [];
+              return;
             }
     
             if(numOverTimeStr == ""){
@@ -288,7 +289,7 @@ async function start(){
     
               if(numOT== null || numOT == NaN){
                 console.log("error parsing numOT");
-                return [];
+                return;
               }
               numOverTime = numOT;
     
@@ -330,8 +331,11 @@ async function start(){
             else if(displayStr.includes("3")){
               isEndOfThird = true;
             }
+            else if(displayStr.includes("4")){
+              isEndOfFourth = true;
+            }
             else{
-              console.log("Error: the displayStr does not contain 1 or 3");
+              console.log("Error: the displayStr does not contain 1 or 3 or 4");
               return;
             }
           }
@@ -503,6 +507,10 @@ async function start(){
     }
 
   
+    // send email saying that the scraper has closed the browser and no longer is looking for scores
+    // await sendEmail("Score Scraper Closed Browser", "Closed browser");
+    console.log("Sent email about closing browser");
+
   } // end scrapeScores function
 
 
@@ -605,6 +613,21 @@ async function start(){
 
     // console.log("Just completed games:");
     // console.log(just_completed_games);
+  }
+
+  async function closeBrowserIfAllGamesHaveCompleted(){
+
+    // loop through all the games in the cache
+    for(let val of cachedGameData.values()){
+
+      if(val.gameStatus != "completed"){
+        return;
+      }
+    }
+
+    // if we make it to this point, that means all the games in the cache have been completed, so we can close the browser now
+    await browser.close();
+
   }
 }
 
