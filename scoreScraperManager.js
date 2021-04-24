@@ -22,7 +22,7 @@ else{
 const db = admin.firestore();
 
 
-async function getEarliestStartTime(){
+async function updateScraperJobsDocBeforeFirstGameStart(){
 
   const gamesRef = db.collection("games");
 
@@ -33,14 +33,14 @@ async function getEarliestStartTime(){
 
   if(snapshot.empty){
     console.log("No upcoming games were found");
-    return;
+    return false;
   }
 
   const gameStartDateTime = snapshot.docs[0].data().gameStartDateTime.toDate();
 
   if(gameStartDateTime == null){
     console.log("Error in database: the document has null value for the field gameStartDateTime");
-    return;
+    return false;
   }
 
   let tommorrowAtNoon = new Date();
@@ -52,7 +52,7 @@ async function getEarliestStartTime(){
 
   if(gameStartDateTime >= tommorrowAtNoon){
     console.log("No games need to be scraped today");
-    return;
+    return false;
   }
 
   
@@ -67,32 +67,42 @@ async function getEarliestStartTime(){
   
   setTimeout(async () => {
 
-    await updateCurrentScraperJobDoc();
+    await updateCurrentScraperJobDoc("start");
 
     console.log("finished");
+
+    areThereGamesToday = true;
 
   }, numMilliseconds);
 }
 
-async function updateCurrentScraperJobDoc(){
+async function updateCurrentScraperJobDoc(jobType){
 
   const scraperJobDocRef = db.collection("scraper_jobs").doc("current");
 
   const res = await scraperJobDocRef.update({
     "timestamp": firestore.FieldValue.serverTimestamp(),
-    "jobType": "start"
+    "jobType": jobType 
   });
 }
 
-
+let areThereGamesToday = false;
 
 function startCron(){
 
   // "0 12 * * *"
-  cron.schedule("0 12 * * *", () => {
+  cron.schedule("0 12 * * *", async function(){
     console.log("getting earliest start time...");
-    getEarliestStartTime();
+    await updateScraperJobsDocBeforeFirstGameStart();
+  });
+
+  cron.schedule("0 3 * * *", () => {
+    if(areThereGamesToday){
+      areThereGamesToday = false;
+      updateCurrentScraperJobDoc("stop");
+    }
   });
 }
+
 
 startCron();
