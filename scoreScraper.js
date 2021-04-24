@@ -3,7 +3,12 @@ const puppeteer = require('puppeteer');
 const { db } = require('./db');
 const getInitialGameStates = require("./getInitialGameStates");
 const getNumMillisecondsUntilNextThreeAM = require("./utils/getNumMillisecondsUntilNextThreeAM");
+
+
+require('dotenv').config();
+
 const sendEmail = require("./utils/sendEmail");
+
 
 async function start(){
 
@@ -22,7 +27,7 @@ async function start(){
 
   const dbListenerHandle = scraperJobDocRef.onSnapshot(async (docSnapshot) => {
 
-    if(docSnapshot.exists){
+    if(!docSnapshot.exists){
       console.log(`Error: the document "current" was not found in the "scraper_jobs" collection`);
       return;
     }
@@ -36,20 +41,62 @@ async function start(){
       return;
     }
 
-
-    if(jobType == "init"){
-      console.log("Scraper script has been initialized...will do nothing until it gets a command to start scraping");
-      return;
-    }
-
     console.log("Scraper job was updated in database");
 
-    if(browser == null){
-      startScraper();
-    }
-    else{
-      await browser.close();
-      startScraper();
+    switch(jobType){
+
+      case "init":
+
+        console.log("Scraper script has been initialized...will do nothing until it gets a command to start scraping");
+        return;
+
+      case "stop":
+
+        console.log("Scraper jobType was stop...");
+
+        if(browser != null){
+          
+          let emailMessage = "";
+  
+          await browser.close();
+  
+          if(browser.isConnected){
+            emailMessage = "Error somewhere: the browser is still connected";
+          }
+          else{
+            emailMessage = "Browser was successfully closed.";
+          }
+  
+          emailMessage += " Initiated by a stop command.";
+
+          console.log(emailMessage);
+  
+          // send email saying that the scraper has closed the browser and no longer is looking for scores
+          await sendEmail("Score Scraper Browser Close", emailMessage);
+          console.log("Sent email about closing browser");
+        }
+        else{
+          console.log("Browser obj was already null so stop command will do nothing");
+        }
+  
+        return;
+
+      case "start":
+
+        console.log("Scraper jobType was start");
+
+        if(browser == null){
+          startScraper();
+        }
+        else{
+          await browser.close();
+          startScraper();
+        }
+        break;
+      default:
+
+        console.log(`Error: invalid jobType. The jobType was ${jobType}`);
+        return;
     }
   }, err => {
     console.log(`Encountered error: ${err}`);
@@ -104,7 +151,7 @@ async function start(){
     const mm = String(currentTime.getMonth() + 1).padStart(2,'0');
     const yyyy = currentTime.getFullYear();
 
-    browser = await puppeteer.launch({ headless: true });
+    browser = await puppeteer.launch({headless: true, args:['--no-sandbox']});
     const page = await browser.newPage();
     await page.setUserAgent('Mozilla/5.0 (Macintosh; Intel Mac OS X 11_2_0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/89.0.4389.90 Safari/537.36');
 
@@ -132,10 +179,10 @@ async function start(){
         // if(true){
 
         //   await scrapePage();
-        //     console.log("here");
-        //     findGameUpdates();
-        //     updateCache();
-        //     await applyUpdates();
+        //     // console.log("here");
+        //     // findGameUpdates();
+        //     // updateCache();
+        //     // await applyUpdates();
 
         //     console.log("finished scraping")
 
@@ -507,9 +554,7 @@ async function start(){
     }
 
   
-    // send email saying that the scraper has closed the browser and no longer is looking for scores
-    // await sendEmail("Score Scraper Closed Browser", "Closed browser");
-    console.log("Sent email about closing browser");
+    
 
   } // end scrapeScores function
 
@@ -625,10 +670,37 @@ async function start(){
       }
     }
 
-    // if we make it to this point, that means all the games in the cache have been completed, so we can close the browser now
-    await browser.close();
+    if(browser != null){
+          
+      let emailMessage = "";
 
+      await browser.close();
+
+      if(browser.isConnected){
+        emailMessage = "Error somewhere: the browser is still connected.";
+      }
+      else{
+        emailMessage = "Browser was successfully closed.";
+      }
+
+      emailMessage += " Initiated by the scoreScraper detecting that all the games have completed.";
+
+      console.log(emailMessage);
+
+      // send email saying that the scraper has closed the browser and no longer is looking for scores
+      await sendEmail("Score Scraper Browser Close", emailMessage);
+      console.log("Sent email about closing browser");
+    }
+    else{
+      console.log("Browser obj was already null so nothing will happen");
+    }
+
+
+    // send email saying that the scraper has closed the browser and no longer is looking for scores
+    await sendEmail("Score Scraper Closed Browser", "Closed browser");
+    console.log("Sent email about closing browser");
   }
+
 }
 
 

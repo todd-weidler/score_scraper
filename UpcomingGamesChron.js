@@ -293,7 +293,7 @@ function startCron(){
   console.log("Starting upcomingGamesCron");
 
   // 0 1 * * *
-  cron.schedule("* 13 * * *", async function (){
+  cron.schedule("* 1 * * *", async function (){
 
     const upcomingGames = await scrapeUpcomingGames();
 
