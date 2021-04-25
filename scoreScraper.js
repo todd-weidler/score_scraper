@@ -60,7 +60,7 @@ async function start(){
   
           await browser.close();
   
-          if(browser.isConnected){
+          if(browser.isConnected()){
             emailMessage = "Error somewhere: the browser is still connected";
           }
           else{
@@ -105,8 +105,6 @@ async function start(){
 
   async function startScraper(){
 
-    await setUpScraper();
-
     const curDt = new Date();
 
     let curUTCHour = curDt.getUTCHours();
@@ -118,6 +116,8 @@ async function start(){
     }
 
     const numMilliseconds = getNumMillisecondsUntilNextThreeAM();
+
+    await setUpScraper();
 
     setTimeout(async () => {
 
@@ -676,7 +676,7 @@ async function start(){
 
       await browser.close();
 
-      if(browser.isConnected){
+      if(browser.isConnected()){
         emailMessage = "Error somewhere: the browser is still connected.";
       }
       else{
