@@ -2,6 +2,13 @@ const { firestore } = require("firebase-admin");
 const admin = require("firebase-admin");
 const cron = require("node-cron");
 // const customUTCDateStr = require("./utils/customUTCDateStr");
+
+const {exec} = require('child_process');
+
+require('dotenv').config();
+
+const sendEmail = require("./utils/sendEmail");
+
 const serviceAccount = require('./ServiceAccountKey.json');
 
 const isTesting = false;
@@ -67,10 +74,12 @@ async function updateScraperJobsDocBeforeFirstGameStart(){
   
   setTimeout(async () => {
 
-    await updateCurrentScraperJobDoc("start");
-
-    console.log("finished");
-
+    // await updateCurrentScraperJobDoc("start");
+    exec("pm2 start scoreScraper.js", (error, _) => {
+      console.log("Error: "+ error);
+      console.log("finished starting scoreScraper.js");
+    });
+    
     areThereGamesToday = true;
 
   }, numMilliseconds);
@@ -99,10 +108,39 @@ function startCron(){
   cron.schedule("0 3 * * *", () => {
     if(areThereGamesToday){
       areThereGamesToday = false;
-      updateCurrentScraperJobDoc("stop");
+      // updateCurrentScraperJobDoc("stop");
+      exec("pm2 stop scoreScraper.js", async (error, _) => {
+        await sendEmail("Score Scraper Browser Close Event", 
+                        error ? `Error closing browser\nError message: ${error}` : 
+                        "Browser closed successfully. Initiated by cron from scoreScraperManager");
+
+        console.log("Sent email about closing browser");
+      });
     }
   });
 }
+
+
+process.on('message', (packet) => {
+
+  const { data : { message } } = packet;
+
+  console.log(message);
+
+  if(message == "finished"){
+      exec("pm2 stop scoreScraper.js", async (error, _) => {
+
+        await sendEmail("Score Scraper Browser Close Event", 
+                        error ? `Error closing browser\nError message: ${error}` : 
+                        "Browser closed successfully. Initiated by scoreScraper");
+
+        console.log("Sent email about closing browser");
+      });
+      
+  }
+
+});
+
 
 
 startCron();

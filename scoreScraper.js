@@ -4,10 +4,13 @@ const { db } = require('./db');
 const getInitialGameStates = require("./getInitialGameStates");
 const getNumMillisecondsUntilNextThreeAM = require("./utils/getNumMillisecondsUntilNextThreeAM");
 
+const pm2 = require('pm2');
 
-require('dotenv').config();
+// const inspector = require('event-loop-inspector')();
 
-const sendEmail = require("./utils/sendEmail");
+// require('dotenv').config();
+
+// const sendEmail = require("./utils/sendEmail");
 
 
 async function start(){
@@ -23,109 +26,111 @@ async function start(){
 
   let games;
 
-  const scraperJobDocRef = db.collection("scraper_jobs").doc("current");
+  // const scraperJobDocRef = db.collection("scraper_jobs").doc("current");
 
-  const dbListenerHandle = scraperJobDocRef.onSnapshot(async (docSnapshot) => {
+  startScraper();
 
-    if(!docSnapshot.exists){
-      console.log(`Error: the document "current" was not found in the "scraper_jobs" collection`);
-      return;
-    }
+  // const dbListenerHandle = scraperJobDocRef.onSnapshot(async (docSnapshot) => {
 
-    console.log("Document read from scraper_jobs/current");
+  //   if(!docSnapshot.exists){
+  //     console.log(`Error: the document "current" was not found in the "scraper_jobs" collection`);
+  //     return;
+  //   }
 
-    const {jobType} = docSnapshot.data();
+  //   console.log("Document read from scraper_jobs/current");
 
-    if(jobType == null){
-      console.log("Error: the jobType field is null");
-      return;
-    }
+  //   const {jobType} = docSnapshot.data();
 
-    console.log("Scraper job was updated in database");
+  //   if(jobType == null){
+  //     console.log("Error: the jobType field is null");
+  //     return;
+  //   }
 
-    switch(jobType){
+  //   console.log("Scraper job was updated in database");
 
-      case "init":
+  //   switch(jobType){
 
-        console.log("Scraper script has been initialized...will do nothing until it gets a command to start scraping");
-        return;
+  //     case "init":
 
-      case "stop":
+  //       console.log("Scraper script has been initialized...will do nothing until it gets a command to start scraping");
+  //       return;
 
-        console.log("Scraper jobType was stop...");
+  //     case "stop":
 
-        if(browser != null){
+  //       console.log("Scraper jobType was stop...");
+
+  //       if(browser != null){
           
-          let emailMessage = "";
+  //         let emailMessage = "";
   
-          await browser.close();
+  //         await browser.close();
   
-          if(browser.isConnected()){
-            emailMessage = "Error somewhere: the browser is still connected";
-          }
-          else{
-            emailMessage = "Browser was successfully closed.";
-          }
+  //         if(browser.isConnected()){
+  //           emailMessage = "Error somewhere: the browser is still connected";
+  //         }
+  //         else{
+  //           emailMessage = "Browser was successfully closed.";
+  //         }
   
-          emailMessage += " Initiated by a stop command.";
+  //         emailMessage += " Initiated by a stop command.";
 
-          console.log(emailMessage);
+  //         console.log(emailMessage);
   
-          // send email saying that the scraper has closed the browser and no longer is looking for scores
-          await sendEmail("Score Scraper Browser Close", emailMessage);
-          console.log("Sent email about closing browser");
-        }
-        else{
-          console.log("Browser obj was already null so stop command will do nothing");
-        }
+  //         // send email saying that the scraper has closed the browser and no longer is looking for scores
+  //         await sendEmail("Score Scraper Browser Close", emailMessage);
+  //         console.log("Sent email about closing browser");
+  //       }
+  //       else{
+  //         console.log("Browser obj was already null so stop command will do nothing");
+  //       }
   
-        return;
+  //       return;
 
-      case "start":
+  //     case "start":
 
-        console.log("Scraper jobType was start");
+  //       console.log("Scraper jobType was start");
 
-        if(browser == null){
-          startScraper();
-        }
-        else{
-          await browser.close();
-          startScraper();
-        }
-        break;
-      default:
+  //       if(browser == null){
+  //         startScraper();
+  //       }
+  //       else{
+  //         await browser.close();
+  //         startScraper();
+  //       }
+  //       break;
+  //     default:
 
-        console.log(`Error: invalid jobType. The jobType was ${jobType}`);
-        return;
-    }
-  }, err => {
-    console.log(`Encountered error: ${err}`);
-  });
+  //       console.log(`Error: invalid jobType. The jobType was ${jobType}`);
+  //       return;
+  //   }
+  // }, err => {
+  //   console.log(`Encountered error: ${err}`);
+  // });
 
 
   async function startScraper(){
 
-    const curDt = new Date();
+    // const curDt = new Date();
 
-    let curUTCHour = curDt.getUTCHours();
+    // let curUTCHour = curDt.getUTCHours();
 
     // if it between 3am and 11am ET
-    if(curUTCHour > 7 && curUTCHour < 15){
-      console.log("Ignoring scraper job because scraper received it between 3am and 11am");
-      return;
-    }
+    // if(curUTCHour > 7 && curUTCHour < 15){
+    //   console.log("Ignoring scraper job because scraper received it between 3am and 11am");
+    //   return;
+    // }
 
-    const numMilliseconds = getNumMillisecondsUntilNextThreeAM();
+    // const numMilliseconds = getNumMillisecondsUntilNextThreeAM();
 
     await setUpScraper();
 
-    setTimeout(async () => {
+    // setTimeout(async () => {
 
-      if(browser != null && browser.isConnected()){
-        await browser.close();
-      }
+    //   if(browser != null && browser.isConnected()){
+    //     await browser.close();
+    //   }
 
-    }, numMilliseconds);
+    // }, numMilliseconds);
 
 
     scrapeScores();
@@ -171,10 +176,12 @@ async function start(){
     await page.exposeFunction('updateCache', updateCache);
     await page.exposeFunction('applyUpdates', applyUpdates);
     await page.exposeFunction('closeBrowserIfAllGamesHaveCompleted', closeBrowserIfAllGamesHaveCompleted);
+    await page.exposeFunction('performScrape', performScrape);
     
-   
+    await page.exposeFunction('notifyManagerOfCompletion', notifyManagerOfCompletion);
+   // notifyManagerOfCompletion
     try{
-      await page.evaluate(async () => {
+      await page.evaluate(() => {
 
         // if(true){
 
@@ -189,36 +196,46 @@ async function start(){
         //   return;
         // }
 
-        const target = document.querySelector("#events");
+       
+          const target = document.querySelector("#events");
 
-        const observer = new MutationObserver(async (mutations) => {
+          const observer = new MutationObserver((mutations) => {
             //when a mutation has been detected
     
             // get the games from page
+
+            // await scrapePage();
+            // findGameUpdates();
+            // updateCache();
+            // // await applyUpdates();
+            // await closeBrowserIfAllGamesHaveCompleted();
+
+            performScrape();
+
+          });
           
-            await scrapePage();
-            findGameUpdates();
-            updateCache();
-            await applyUpdates();
-            await closeBrowserIfAllGamesHaveCompleted();
-
-        });
-
-
-        observer.observe(target, {
-          childList: true,
-          characterData: true,
-          subtree: true,
-        });
-
+          observer.observe(target, {
+            childList: true,
+            characterData: true,
+            subtree: true,
+          });
       });
 
     }
-    catch(err){
-
-    }
+    catch(err){}
    
   
+    async function performScrape(){
+
+      console.log("here");
+      await scrapePage();
+      findGameUpdates();
+      updateCache();
+      await applyUpdates();
+      await closeBrowserIfAllGamesHaveCompleted();
+
+      // console.log(inspector.dump());
+    }
       
     async function scrapePage(){
     
@@ -357,7 +374,7 @@ async function start(){
             currentQuarter = 4;
           }
           else{
-            console.log("Error: the current quarter info is not valid");
+            console.log(`Error: the current quarter info is not valid. quarterStr is ${quarterStr}\n and the fullTimeLeftStr is ${fullTimeLeftStr}`);
             return;
           }
         }
@@ -567,6 +584,8 @@ async function start(){
 
       cachedGameData.set(lookupId, {...game});
     }
+
+    console.log(game_updates);
   
   }
 
@@ -670,37 +689,77 @@ async function start(){
       }
     }
 
-    if(browser != null){
+    notifyManagerOfCompletion();
+
+    // if(browser != null){
           
-      let emailMessage = "";
+    //   let emailMessage = "";
 
-      await browser.close();
+    //   await browser.close();
 
-      if(browser.isConnected()){
-        emailMessage = "Error somewhere: the browser is still connected.";
-      }
-      else{
-        emailMessage = "Browser was successfully closed.";
-      }
+    //   if(browser.isConnected()){
+    //     emailMessage = "Error somewhere: the browser is still connected.";
+    //   }
+    //   else{
+    //     emailMessage = "Browser was successfully closed.";
+    //   }
 
-      emailMessage += " Initiated by the scoreScraper detecting that all the games have completed.";
+    //   emailMessage += " Initiated by the scoreScraper detecting that all the games have completed.";
 
-      console.log(emailMessage);
+    //   console.log(emailMessage);
 
-      // send email saying that the scraper has closed the browser and no longer is looking for scores
-      await sendEmail("Score Scraper Browser Close", emailMessage);
-      console.log("Sent email about closing browser");
-    }
-    else{
-      console.log("Browser obj was already null so nothing will happen");
-    }
+    //   // send email saying that the scraper has closed the browser and no longer is looking for scores
+    //   await sendEmail("Score Scraper Browser Close", emailMessage);
+    //   console.log("Sent email about closing browser");
+    // }
+    // else{
+    //   console.log("Browser obj was already null so nothing will happen");
+    // }
 
 
-    // send email saying that the scraper has closed the browser and no longer is looking for scores
-    await sendEmail("Score Scraper Closed Browser", "Closed browser");
-    console.log("Sent email about closing browser");
+    // // send email saying that the scraper has closed the browser and no longer is looking for scores
+    // await sendEmail("Score Scraper Closed Browser", "Closed browser");
+    // console.log("Sent email about closing browser");
   }
 
+
+  function notifyManagerOfCompletion(){
+
+    pm2.connect(function() {
+
+      let parentId = null;
+
+      // Find the IDs of who you want to send to
+      pm2.list(function(err, processes) {
+          for (var i in processes) {
+            if(processes[i].name == 'scoreScraperManager') {
+                parentId = processes[i].pm_id;
+                break;
+            }
+          }
+      
+          if(parentId == null){
+              console.log("parent id is null");
+              return;
+          }
+
+          // Call this once for each neighborIds
+          pm2.sendDataToProcessId({
+              data : {
+                  message : "finished"
+              },
+              topic: 'scraper status',
+              id: parentId
+          }, (err, res) => {
+              if(err){
+                  console.log(err);
+              }
+          });
+      });
+  });
+
+
+  }
 }
 
 
