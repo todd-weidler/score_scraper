@@ -27,7 +27,7 @@ const db = admin.firestore();
 
 async function scrapeUpcomingGames() { // returns an array that contains each upcoming game as an object.
 	
-  console.log("About to scrape");
+  console.log("About to scrape...");
 
   const url = "https://www.espn.com/nba/scoreboard/_/date/"
 	const currentTime = new Date();
